@@ -1,199 +1,214 @@
-# para poder trabajar con archivos, carpetas, json, cifrar contenido,
-# convertir datos binarios a texto y cryptography
-import os  
+# Para trabajar con archivos, carpetas y JSON
+# Tambien para cifrar y convertir datos
+import os
 import json
 import base64
 
+# Libreria cryptography
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import serialization
 
-#donde ser guardara (la carpeta dta en el archivo keystore.enc)
+
+# ==========================================
+# ============== CONFIGURACION =============
+# ==========================================
+
 DATA_DIR = "data"
 KEYSTORE_FILE = os.path.join(DATA_DIR, "keystore.enc")
 
-#definir el numero de iteraciones para PBKDF2
 ITERATIONS = 600000
 
-#======================
-#========CREATE========
-#======================
-def create_keystore():
-    if not os.path.exists(DATA_DIR): #COMPRUEBA SI EXISTE LA CARPETA DATA
-        os.makedirs(DATA_DIR) # sino la crea
 
-#======================
-#========DERIVE========
-#======================
-# recibe password y salt(sirve para q la misma contraseña no produzca siempre el mismo resultado)
-#usa PBKDF2 para derivar una clave de cifrado  a partir de la contraseñ
-def derive_key(password, salt): 
+# ==========================================
+# ================ CREATE ==================
+# ==========================================
+
+def create_keystore():
+    # Creamos la carpeta data si no existe
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
+
+
+# ==========================================
+# ================ DERIVE =================
+# ==========================================
+
+def derive_key(password, salt):
+    # Creamos PBKDF2
     kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=salt,
-            iterations=ITERATIONS
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=ITERATIONS
     )
 
+    # Generamos la clave
     key = kdf.derive(password.encode())
+
+    # Convertimos la clave al formato Fernet
     return base64.urlsafe_b64encode(key)
 
-#=============================
-#========SAVE_KAYSTORE========
-#=============================
-#data - JSON - UTF-8 - fernet - datos cifrados - keystore.enc (salt fuera de los cifrados para recuperarlo para generar la clvae)
-def save_keystore(data, password): 
+
+# ==========================================
+# ============== SAVE KEYSTORE =============
+# ==========================================
+
+def save_keystore(data, password):
+
     create_keystore()
 
-# Generamos un salt aleatorio
+    # Generamos un salt aleatorio
     salt = os.urandom(16)
 
-    # Generamos la clave de cifrado utilizando la contraseña
+    # Generamos la clave de cifrado
     key = derive_key(password, salt)
 
-    # Creamos el objeto encargado del cifrado
+    # Creamos Fernet
     fernet = Fernet(key)
 
     # Convertimos los datos a JSON
     json_data = json.dumps(data)
 
-    # Ciframos el JSON
+    # Ciframos los datos
     encrypted_data = fernet.encrypt(json_data.encode())
 
-    # Guardamos el salt y los datos cifrados
+    # Guardamos salt y datos cifrados
     keystore_data = {
         "salt": base64.b64encode(salt).decode(),
         "data": encrypted_data.decode()
     }
-    # Escribimos el contenido en el fichero
-    with open(KEYSTORE_FILE, "w") as file:
+
+    # Guardamos el archivo
+    with open(KEYSTORE_FILE, "w", encoding="utf-8") as file:
         json.dump(keystore_data, file, indent=4)
 
 
-#====================
-#========LOAS========
-#====================
+# ==========================================
+# ================ LOAD ===================
+# ==========================================
 
-#recibe la contraeña y busca data/keystore.enc
-# si no existe lanza error
-#si existe y es correcta,  recupera el salt, genera la clave y descifra los datos
-# si la cobtraseña es incorrecta, el descifrado falla
-# si el contenido no puede cifrarse correctamente, tmb salta erro
 def load_keystore(password):
+
+    # Si no existe, devolvemos un diccionario vacio
     if not os.path.exists(KEYSTORE_FILE):
-        return{}
+        return {}
+
     try:
-        # Abrimos el fichero
-        with open(KEYSTORE_FILE, "r") as file:
+
+        with open(KEYSTORE_FILE, "r", encoding="utf-8") as file:
             keystore_data = json.load(file)
 
-        # Recuperamos el salt
-        salt = base64.b64decode(keystore_data["salt"])
+        # Recuperamos salt
+        salt = base64.b64decode(
+            keystore_data["salt"]
+        )
 
-        # Recuperamos los datos cifrados
+        # Recuperamos datos cifrados
         encrypted_data = keystore_data["data"]
 
-        # Volvemos a generar la clave utilizando
-        # la contraseña introducida y el mismo salt
+        # Generamos la misma clave
         key = derive_key(password, salt)
 
-        # Creamos el objeto Fernet
+        # Creamos Fernet
         fernet = Fernet(key)
 
-        # Desciframos los datos
+        # Desciframos
         decrypted_data = fernet.decrypt(
             encrypted_data.encode()
         )
 
-        # Convertimos el JSON descifrado en un diccionario
-        return json.loads(decrypted_data.decode())
+        # Convertimos a diccionario
+        return json.loads(
+            decrypted_data.decode()
+        )
 
-    except InvalidToken: #si la contraseña es incorrecta
+    except InvalidToken:
         raise ValueError("Contraseña incorrecta")
 
-    except (json.JSONDecodeError, KeyError, ValueError): #si el fichero esta corrupto o estructura incorrecta
-        raise ValueError("El KeyStore esta corrupto")
+    except (
+        json.JSONDecodeError,
+        KeyError,
+        ValueError
+    ):
+        raise ValueError(
+            "El KeyStore esta corrupto"
+        )
 
 
-#====================
-#========SAVE========
-#====================
-# guarda una clave privada y su informacion asociada
-# dentro del KeyStore cifrado
-# ej recibe : alias (pepe), private_key(clave privada),
-# subject (nombre comun (CN), organitation unit(OU), organitation(O), locality(L), state o provincie (ST), country(C))
-# ej: CN=PEPE OU=DAM O=MONLAU L=BARCELONA ST=BARCELONA C=ES
-# y la contraseña
-#luego comprueba si existe data/keystore.enc, sino lo crea, y si si lo abre
-#luego comprueba si el alias existe, si ya existe no sobreescribe la clave
-#luego añade la info
-#convierte la info en una estructura que se pueda guardar como JSON (antes de cifrarlo)
-def save_key(alias, private_key, subject, password):
-    #cargamos el Kaystore que existe
+# ==========================================
+# ================= SAVE ==================
+# ==========================================
+
+def save_key(
+    alias,
+    private_key,
+    subject,
+    password
+):
+
     data = load_keystore(password)
 
-    #comprobar si el alias existe 
+    # Comprobamos alias
     if alias in data:
-        raise ValueError("El alias ya existe")
+        raise ValueError(
+            "El alias ya existe"
+        )
 
-    #convertir la clave privada a formato PEM
+    # Convertimos clave privada a PEM
     private_key_pem = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption()
     ).decode()
 
-    #crear la info que se guarda
+    # Guardamos la informacion
     data[alias] = {
         "private_key": private_key_pem,
-        "subject": subject
+        "subject": subject.rfc4514_string()
     }
 
-    #guardar de nuevo el keystore
-    save_keystore(data, password)
+    # Guardamos KeyStore
+    save_keystore(
+        data,
+        password
+    )
 
 
+# ==========================================
+# ============ ALIAS EXISTS ===============
+# ==========================================
 
-#============================
-#========ALIAS_EXISTS========
-#============================
-#es para comprobar si un alias ya esta en uso
-#devuelve true o false/continua o salta error
 def alias_exists(alias, password):
+
     data = load_keystore(password)
+
     return alias in data
 
-#===================
-#========GET========
-#===================
-#recupera una clave privada concreta
-#devuelve los datoas asociados al alias
+
+# ==========================================
+# ============= LIST ALIASES ==============
+# ==========================================
+
+def list_aliases(password):
+
+    data = load_keystore(password)
+
+    return list(data.keys())
+
+
+# ==========================================
+# ================= GET ===================
+# ==========================================
+
 def get_key(alias, password):
+
     data = load_keystore(password)
 
     if alias not in data:
-        raise ValueError("El alias no existe")
-    
+        raise ValueError(
+            "El alias no existe"
+        )
+
     return data[alias]
-
-
-
-#                   save_key()
-#        _-_____________-_______________-__
-#       alias       private_key     subject
-#         -
-#   alias existe
-#   -          -
-#   Si         NO
-#   -           -   
-# ERROR     convertir clave a PEM  
-#               -
-#           añadir al diccionario
-#               -
-#           save_keystore()
-#               -
-#           cifrar con fernet
-#               -
-#           data/keystore.enc
-#
