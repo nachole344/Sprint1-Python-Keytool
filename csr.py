@@ -10,107 +10,44 @@ from cryptography.x509.oid import NameOID
 # Funcion para recuperar claves
 from keystore import get_key
 
-
-# ==========================================
-# ============== CREATE SUBJECT ============
-# ==========================================
-
-def create_subject(
-    common_name,
-    organizational_unit,
-    organization,
-    locality,
-    state,
-    country
-):
-
-    subject = x509.Name([
-        x509.NameAttribute(
-            NameOID.COUNTRY_NAME,
-            country
-        ),
-
-        x509.NameAttribute(
-            NameOID.STATE_OR_PROVINCE_NAME,
-            state
-        ),
-
-        x509.NameAttribute(
-            NameOID.LOCALITY_NAME,
-            locality
-        ),
-
-        x509.NameAttribute(
-            NameOID.ORGANIZATION_NAME,
-            organization
-        ),
-
-        x509.NameAttribute(
-            NameOID.ORGANIZATIONAL_UNIT_NAME,
-            organizational_unit
-        ),
-
-        x509.NameAttribute(
-            NameOID.COMMON_NAME,
-            common_name
-        )
-    ])
-
-    return subject
-
-
 # ==========================================
 # ============== GENERATE CSR ==============
 # ==========================================
 
-def generate_csr_for_alias(
-    alias,
-    password,
-    common_name,
-    organizational_unit,
-    organization,
-    locality,
-    state,
-    country
-):
+def generate_csr_for_alias(alias, password):
 
-    # Recuperamos los datos del alias
+    # Recuperamos los datos del alias desde el KeyStore
     key_data = get_key(
         alias,
         password
     )
 
-    # Recuperamos clave privada PEM
-    private_key_pem = key_data[
-        "private_key"
-    ]
+    # Recuperamos la clave privada PEM
+    private_key_pem = key_data["private_key"]
 
-    # Convertimos PEM a clave privada
+    # Convertimos PEM a objeto de clave privada
     private_key = serialization.load_pem_private_key(
         private_key_pem.encode(),
         password=None
     )
 
-    # Creamos Subject
-    subject = create_subject(
-        common_name,
-        organizational_unit,
-        organization,
-        locality,
-        state,
-        country
+    # Recuperamos el Subject almacenado en el KeyStore
+    subject_string = key_data["subject"]
+
+    # Convertimos la cadena RFC4514 a objeto x509.Name
+    subject = x509.Name.from_rfc4514_string(
+        subject_string
     )
 
-    # Creamos CSR
-    csr_builder = (
-        x509.CertificateSigningRequestBuilder()
-    )
+    # Creamos el constructor de la CSR
+    csr_builder = x509.CertificateSigningRequestBuilder()
 
+    # Establecemos el Subject
     csr_builder = csr_builder.subject_name(
         subject
     )
 
-    # Firmamos CSR
+    # Firmamos la CSR con la clave privada
     csr = csr_builder.sign(
         private_key,
         hashes.SHA256()

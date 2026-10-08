@@ -1,9 +1,10 @@
 import argparse
 from getpass import getpass
 from crypto_utils import generate_rsa_key, create_subject
+from keystore import save_key
+from csr import generate_csr_for_alias, save_csr
 
 # Función principal del script
-
 def main():
 
     parser = argparse.ArgumentParser(
@@ -63,11 +64,24 @@ def genkeypair():
         c=subject_data["C"]
     )
 
+    try:
+        save_key(
+            alias,
+            private_key,
+            subject,
+            password
+        )
+
+    except ValueError as error:
+        print(f"Error: {error}")
+        return
+
     print()
     print("Par de claves RSA generado correctamente.")
     print(f"Alias: {alias}")
     print(f"Tamaño de clave: {private_key.key_size} bits")
     print(f"DN: {subject.rfc4514_string()}")
+    print("Clave guardada correctamente en el KeyStore.")
 
 def ask_password():
     password = getpass("Contraseña del KeyStore: ")
@@ -121,10 +135,41 @@ def ask_subject_data():
 # Funciones del comando certreq
 def certreq():
     print("=== Generación de solicitud de firma de certificado (CSR) ===")
-    # Aquí se implementaría la lógica para generar la CSR
-    print("Funcionalidad en desarrollo.")
+
+    password = ask_password()
+    if not password:
+        return
+
+    alias = ask_alias()
+    if not alias:
+        return
+
+    try:
+        print()
+        print("Recuperando clave del KeyStore...")
+
+        csr = generate_csr_for_alias(
+            alias,
+            password
+        )
+
+        filename = alias + ".csr"
+
+        filepath = save_csr(
+            csr,
+            filename
+        )
+
+        print()
+        print("CSR generada correctamente.")
+        print("Archivo:", filepath)
+
+    except ValueError as error:
+        print(f"Error: {error}")
+
+    except (TypeError, KeyError):
+        print("Error: los datos almacenados en el KeyStore no son válidos.")
 
 # Bloque principal
-
 if __name__ == "__main__":
     main()
