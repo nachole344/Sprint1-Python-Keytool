@@ -64,7 +64,7 @@ def save_keystore(data, password):
     # Guardamos el salt y los datos cifrados
     keystore_data = {
         "salt": base64.b64encode(salt).decode(),
-        "data": encrypted.data.decode()
+        "data": encrypted_data.decode()
     }
     # Escribimos el contenido en el fichero
     with open(KEYSTORE_FILE, "w") as file:
@@ -89,7 +89,7 @@ def load_keystore(password):
             keystore_data = json.load(file)
 
         # Recuperamos el salt
-        salt = base64-b64decode(keystore_data["salt"])
+        salt = base64.b64decode(keystore_data["salt"])
 
         # Recuperamos los datos cifrados
         encrypted_data = keystore_data["data"]
@@ -119,7 +119,8 @@ def load_keystore(password):
 #====================
 #========SAVE========
 #====================
-# guarda la contraseña encriptada dentro del keystore
+# guarda una clave privada y su informacion asociada
+# dentro del KeyStore cifrado
 # ej recibe : alias (pepe), private_key(clave privada),
 # subject (nombre comun (CN), organitation unit(OU), organitation(O), locality(L), state o provincie (ST), country(C))
 # ej: CN=PEPE OU=DAM O=MONLAU L=BARCELONA ST=BARCELONA C=ES
@@ -138,9 +139,9 @@ def save_key(alias, private_key, subject, password):
 
     #convertir la clave privada a formato PEM
     private_key_pem = private_key.private_bytes(
-        encoding=serialization.Encodign.PEM,
+        encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
-        encryption_algotithm=serialization.NoEncryption()
+        encryption_algorithm=serialization.NoEncryption()
     ).decode()
 
     #crear la info que se guarda
@@ -168,7 +169,7 @@ def alias_exists(alias, password):
 #===================
 #recupera una clave privada concreta
 #devuelve los datoas asociados al alias
-def get_key(alias, password)
+def get_key(alias, password):
     data = load_keystore(password)
 
     if alias not in data:
