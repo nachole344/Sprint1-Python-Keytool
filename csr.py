@@ -1,18 +1,17 @@
-# Para trabajar con archivos
+
+# Funciones para generar y guardar solicitudes CSR
+
 import os
 
-# Librerias de cryptography
 from cryptography import x509
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509.oid import NameOID
 
-# Funcion para recuperar claves
 from keystore import get_key
 
 
 # ==========================================
-# ============== CREATE SUBJECT ============
+# ============== CREATE SUBJECT =============
 # ==========================================
 
 def create_subject(
@@ -23,97 +22,40 @@ def create_subject(
     state,
     country
 ):
-
-    subject = x509.Name([
-        x509.NameAttribute(
-            NameOID.COUNTRY_NAME,
-            country
-        ),
-
-        x509.NameAttribute(
-            NameOID.STATE_OR_PROVINCE_NAME,
-            state
-        ),
-
-        x509.NameAttribute(
-            NameOID.LOCALITY_NAME,
-            locality
-        ),
-
-        x509.NameAttribute(
-            NameOID.ORGANIZATION_NAME,
-            organization
-        ),
-
-        x509.NameAttribute(
-            NameOID.ORGANIZATIONAL_UNIT_NAME,
-            organizational_unit
-        ),
-
-        x509.NameAttribute(
-            NameOID.COMMON_NAME,
-            common_name
-        )
+    # Creamos el DN con los seis campos del titular
+    return x509.Name([
+        x509.NameAttribute(NameOID.COUNTRY_NAME, country),
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, state),
+        x509.NameAttribute(NameOID.LOCALITY_NAME, locality),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, organization),
+        x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, organizational_unit),
+        x509.NameAttribute(NameOID.COMMON_NAME, common_name)
     ])
-
-    return subject
 
 
 # ==========================================
 # ============== GENERATE CSR ==============
 # ==========================================
 
-def generate_csr_for_alias(
-    alias,
-    password,
-    common_name,
-    organizational_unit,
-    organization,
-    locality,
-    state,
-    country
-):
+def generate_csr_for_alias(alias, password):
+    # Recuperamos la informacion de la clave guardada
+    key_data = get_key(alias, password)
 
-    # Recuperamos los datos del alias
-    key_data = get_key(
-        alias,
-        password
-    )
-
-    # Recuperamos clave privada PEM
-    private_key_pem = key_data[
-        "private_key"
-    ]
-
-    # Convertimos PEM a clave privada
+    private_key_pem = key_data["private_key"]
     private_key = serialization.load_pem_private_key(
-        private_key_pem.encode(),
+        private_key_pem.encode("ascii"),
         password=None
     )
 
-    # Creamos Subject
-    subject = create_subject(
-        common_name,
-        organizational_unit,
-        organization,
-        locality,
-        state,
-        country
-    )
+    # Recuperamos el DN original del almacen
+    subject_data = key_data["subject"]
+    subject = x509.Name.from_rfc4514_string(subject_data)
 
-    # Creamos CSR
-    csr_builder = (
+    # Creamos la solicitud de firma
+    csr = (
         x509.CertificateSigningRequestBuilder()
-    )
-
-    csr_builder = csr_builder.subject_name(
-        subject
-    )
-
-    # Firmamos CSR
-    csr = csr_builder.sign(
-        private_key,
-        hashes.SHA256()
+        .subject_name(subject)
+        .sign(private_key, hashes.SHA256())
     )
 
     return csr
@@ -124,26 +66,20 @@ def generate_csr_for_alias(
 # ==========================================
 
 def save_csr(csr, filename):
-
     data_dir = "data"
+    os.makedirs(data_dir, exist_ok=True)
 
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
+    # Evitamos rutas arbitrarias en el nombre del archivo
+    filename = os.path.basename(filename)
 
-    filepath = os.path.join(
-        data_dir,
-        filename
-    )
+    if not filename.lower().endswith(".csr"):
+        filename += ".csr"
 
-    csr_pem = csr.public_bytes(
-        serialization.Encoding.PEM
-    )
+    filepath = os.path.join(data_dir, filename)
 
-    with open(
-        filepath,
-        "wb"
-    ) as file:
+    csr_pem = csr.public_bytes(serialization.Encoding.PEM)
 
+    with open(filepath, "wb") as file:
         file.write(csr_pem)
 
     return filepath
