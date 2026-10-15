@@ -99,6 +99,9 @@ def ask_password(confirm=False):
     if not password:
         print("Error: la contraseña no puede estar vacía.")
         return None
+    elif len(password) < 6:
+        print("Error: la contraseña debe tener al menos 6 caracteres.")
+        return None
 
     if confirm:
         if getpass("Repite la contraseña: ") != password:
