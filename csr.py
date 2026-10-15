@@ -1,13 +1,16 @@
-# Para trabajar con archivos
+
+# funciones para generar y guardar solicitudes csr
+# una csr es una solicitud de firma de certificado digital
+
+# importar os para trabajar con archivos y carpetas
 import os
 
-# Librerias de cryptography
+# importar las funciones necesarias para crear solicitudes y certificados
 from cryptography import x509
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509.oid import NameOID
 
-# Funcion para recuperar claves
+# importar la funcion para recuperar una clave del keystore
 from keystore import get_key
 
 # ==========================================
@@ -15,44 +18,37 @@ from keystore import get_key
 # ==========================================
 
 def generate_csr_for_alias(alias, password):
-
-    # Recuperamos los datos del alias desde el KeyStore
-    key_data = get_key(
-        alias,
-        password
-    )
+    # recuperar la informacion de la clave guardada en el keystore
+    # para ello necesitamos el alias y la contrasena
+    key_data = get_key(alias, password)
 
     # Recuperamos la clave privada PEM
     private_key_pem = key_data["private_key"]
 
-    # Convertimos PEM a objeto de clave privada
+    # convertir el texto pem en un objeto de clave privada
+    # password=None porque la clave se guardo sin cifrado individual
+    # la proteccion se aplica al contenido completo del keystore
     private_key = serialization.load_pem_private_key(
-        private_key_pem.encode(),
+        private_key_pem.encode("ascii"),
         password=None
     )
 
-    # Recuperamos el Subject almacenado en el KeyStore
-    subject_string = key_data["subject"]
+    # recuperar el DN original del almacen
+    subject_data = key_data["subject"]
 
-    # Convertimos la cadena RFC4514 a objeto x509.Name
-    subject = x509.Name.from_rfc4514_string(
-        subject_string
+    # convertir el texto del DN en un objeto que pueda utilizar x509
+    subject = x509.Name.from_rfc4514_string(subject_data)
+
+    # crear la solicitud de firma del certificado
+    csr = (
+        x509.CertificateSigningRequestBuilder()
+        # anadir los datos del titular a la solicitud
+        .subject_name(subject)
+        # firmar la solicitud con la clave privada y el algoritmo sha256
+        .sign(private_key, hashes.SHA256())
     )
 
-    # Creamos el constructor de la CSR
-    csr_builder = x509.CertificateSigningRequestBuilder()
-
-    # Establecemos el Subject
-    csr_builder = csr_builder.subject_name(
-        subject
-    )
-
-    # Firmamos la CSR con la clave privada
-    csr = csr_builder.sign(
-        private_key,
-        hashes.SHA256()
-    )
-
+    # devolver la solicitud csr generada
     return csr
 
 
@@ -61,26 +57,33 @@ def generate_csr_for_alias(alias, password):
 # ==========================================
 
 def save_csr(csr, filename):
-
+    # definir la carpeta donde se guardaran las solicitudes
     data_dir = "data"
 
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
+    # crear la carpeta si no existe
+    os.makedirs(data_dir, exist_ok=True)
 
-    filepath = os.path.join(
-        data_dir,
-        filename
-    )
+    # eliminar las rutas de carpetas del nombre recibido
+    # asi evitamos que se guarde el archivo en otra ubicacion
+    filename = os.path.basename(filename)
 
-    csr_pem = csr.public_bytes(
-        serialization.Encoding.PEM
-    )
+    # comprobar si el nombre termina en .csr
+    # si no tiene la extension, anadirla automaticamente
+    if not filename.lower().endswith(".csr"):
+        filename += ".csr"
 
-    with open(
-        filepath,
-        "wb"
-    ) as file:
+    # crear la ruta completa del archivo dentro de la carpeta data
+    filepath = os.path.join(data_dir, filename)
 
+    # convertir la solicitud csr al formato pem
+    # pem permite guardar la solicitud en un archivo de texto
+    csr_pem = csr.public_bytes(serialization.Encoding.PEM)
+
+    # abrir el archivo en modo escritura binaria
+    # wb permite escribir los datos en formato binario
+    with open(filepath, "wb") as file:
+        # escribir la solicitud csr en el archivo
         file.write(csr_pem)
 
+    # devolver la ruta donde se ha guardado la solicitud
     return filepath
