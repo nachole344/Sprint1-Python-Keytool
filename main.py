@@ -7,13 +7,16 @@ from getpass import getpass
 # importar las funciones para crear y gestionar el keystore
 from keystore import (
     create_keystore,
+    keystore_exists,
     save_keystore,
     list_aliases,
-    get_key
+    get_key,
+    entry_type,
+    input_path
 )
 
 # importar las funciones para generar claves y solicitudes csr
-from keytool import genkeypair, certreq
+from commands import genkeypair, certreq
 
 # importar las funciones para verificar una csr y mostrar su informacion
 from verify_csr import verify_csr, show_csr_info
@@ -56,6 +59,11 @@ def create_keystore_option():
     # comprobar que la contrasena no este vacia
     if not password:
         print("Error: la contrasena no puede estar vacia.")
+        return
+
+    # no sobrescribir un keystore existente: se perderian todas sus claves
+    if keystore_exists():
+        print("Error: el KeyStore ya existe. No se puede crear de nuevo.")
         return
 
     try:
@@ -117,12 +125,14 @@ def show_information():
         # recuperar los datos guardados para el alias indicado
         key_data = get_key(alias, password)
 
-        # mostrar el alias y los datos del titular guardados
+        # mostrar el alias, el tipo de entrada y los datos del titular guardados
         print("Alias:", alias)
-        print("Subject:", key_data["subject"])
+        print("Tipo:", entry_type(key_data))
+        print("Subject:", key_data.get("subject", "(sin datos de titular)"))
 
-        # indicar que hay una clave privada almacenada para ese alias
-        print("Clave privada almacenada: SI")
+        # indicar si hay una clave privada almacenada para ese alias
+        if entry_type(key_data) == "PrivateKeyEntry":
+            print("Clave privada almacenada: SI")
 
     # controlar errores si el alias no existe o la contrasena es incorrecta
     except (ValueError, OSError) as error:
@@ -144,7 +154,7 @@ def verify_csr_option():
 
     try:
         # comprobar si la csr es valida y recuperar sus datos
-        csr = verify_csr(filepath)
+        csr = verify_csr(input_path(filepath))
 
         # mostrar un mensaje si la verificacion se completa correctamente
         print("CSR valida correctamente.")

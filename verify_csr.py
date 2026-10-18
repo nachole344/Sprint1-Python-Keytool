@@ -1,82 +1,74 @@
-
-# funciones para verificar solicitudes csr
-# permite comprobar si una solicitud es valida y mostrar su informacion
-
-# importar os para comprobar si los archivos existen y poder leerlos
+# funciones para verificar solicitudes csr y mostrar su informacion
+# tambien se puede usar desde la terminal: python verify_csr.py archivo.csr
 import os
+import sys
 
-# importar x509 para trabajar con solicitudes de certificados
 from cryptography import x509
+from cryptography.hazmat.primitives.asymmetric import rsa
 
-# importar el error que puede producirse al comprobar una firma
-from cryptography.exceptions import InvalidSignature
-
-
-# ==========================================
-# ============== VERIFY CSR ================
-# ==========================================
 
 def verify_csr(filepath):
-    # comprobar que el archivo indicado existe y es un archivo normal
     if not os.path.isfile(filepath):
         raise ValueError("El archivo CSR no existe")
 
     try:
-        # abrir el archivo en modo lectura binaria
-        # rb permite leer el contenido sin modificar sus bytes
         with open(filepath, "rb") as file:
             csr_data = file.read()
+    except OSError as error:
+        raise ValueError("No se ha podido leer la CSR") from error
 
-        # cargar los datos del archivo como una solicitud csr en formato pem
-        # si el contenido no tiene el formato esperado, se producira un error
+    try:
         csr = x509.load_pem_x509_csr(csr_data)
-
-        # comprobar si la firma de la solicitud es valida
-        # esto permite verificar que la solicitud no se ha modificado
-        if not csr.is_signature_valid:
-            raise ValueError("La firma de la CSR no es valida")
-
-        # devolver la solicitud para poder consultar sus datos
-        return csr
-
-    # controlar errores relacionados con el formato de la solicitud
     except ValueError as error:
-        # si el error indica que la firma no es valida, mantener ese mensaje
-        if str(error) == "La firma de la CSR no es valida":
-            raise
-
-        # mostrar un error si el archivo no contiene una csr pem valida
         raise ValueError("El archivo no contiene una CSR PEM valida") from error
 
-    # controlar errores al leer el archivo o comprobar la firma
-    except (OSError, InvalidSignature) as error:
-        raise ValueError("No se ha podido leer o verificar la CSR") from error
+    # is_signature_valid es una propiedad: devuelve True/False, no lanza excepcion
+    # comprueba que la csr esta firmada con la clave privada que corresponde a su clave publica
+    if not csr.is_signature_valid:
+        raise ValueError("La firma de la CSR no es valida")
 
+    return csr
 
-# ==========================================
-# ============ SHOW CSR INFO ===============
-# ==========================================
 
 def show_csr_info(csr):
-    # dejar una linea en blanco para separar la informacion anterior
-    print()
+    public_key = csr.public_key()
 
-    # mostrar el titulo de la informacion de la csr
+    if isinstance(public_key, rsa.RSAPublicKey):
+        key_info = f"RSA {public_key.key_size} bits"
+    else:
+        key_info = type(public_key).__name__
+
+    print()
     print("===================================")
     print("          INFORMACION CSR")
     print("===================================")
-
-    # mostrar los datos del titular de la solicitud
     print("Subject:", csr.subject.rfc4514_string())
-
-    # mostrar el algoritmo hash utilizado para generar la firma
-    print("Algoritmo:", csr.signature_hash_algorithm.name)
-
-    # indicar si la firma de la solicitud es valida
+    hash_algorithm = csr.signature_hash_algorithm
+    print("Algoritmo:", hash_algorithm.name if hash_algorithm else "desconocido")
     print("Firma valida:", csr.is_signature_valid)
-
-    # mostrar el tipo de clave publica incluida en la solicitud
-    print("Clave publica:", csr.public_key().__class__.__name__)
-
-    # mostrar la linea final para cerrar la informacion
+    print("Clave publica:", key_info)
     print("===================================")
+
+
+def main(argv=None):
+    # uso desde la terminal: python verify_csr.py archivo.csr
+    argv = sys.argv[1:] if argv is None else argv
+
+    if len(argv) != 1 or argv[0] in ("-h", "--help", "-?"):
+        print("Uso: python verify_csr.py ARCHIVO.csr")
+        print("Comprueba que el archivo es una CSR (PEM) con firma valida y muestra su informacion.")
+        return 0 if argv and argv[0] in ("-h", "--help", "-?") else 1
+
+    try:
+        csr = verify_csr(argv[0])
+    except ValueError as error:
+        print(f"Error: {error}")
+        return 1
+
+    print("CSR valida correctamente.")
+    show_csr_info(csr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
