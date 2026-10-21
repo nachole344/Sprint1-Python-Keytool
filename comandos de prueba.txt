@@ -1,4 +1,22 @@
-python keytool.py --genkeypair ()generar en keystore)
-python keytool.py --certreq (generar csr)
-
-
+python keytool.py --genkeypair 
+python keytool.py --certreq 
+python keytool.py --help
+python keytool.py --genkey
+python keytool.py --list
+python verify_csr.py data/xxx.csr
+python keytool.py
+python keytool.py -changealias
+python keytool.py -delete 
+python keytool.py -genseckey
+python keytool.py -importcert -file num.crt 
+python keytool.py -importkeystore -srckeystore "data/keystore.enc"  
+python keytool.py -importkeystore -srckeystore "data/keystore.enc" -destkeystore "keystore.enc"
+python keytool.py -keypasswd 
+python keytool.py -list
+python keytool.py -printcert -file num.crt 
+python keytool.py -printcertreq -file num.csr
+python keytool.py -storepasswd
+python keytool.py -showinfo  
+python keytool.py -version 
+python keytool.py --gencert -infile sean.csr
+python keytool.py -gencert -infile data/num.csr -outfile data/num.crt
