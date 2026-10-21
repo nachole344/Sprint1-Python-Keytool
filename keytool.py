@@ -240,12 +240,28 @@ def print_command_help(name):
 # ============== ARGUMENTOS ================
 # ==========================================
 
+<<<<<<< HEAD
 class SpanishParser(argparse.ArgumentParser):
     # argparse muestra los errores en ingles; aqui se muestran en español y sin traza
     def error(self, message):
         print(f"Error: argumentos no válidos ({message}).", file=sys.stderr)
         print("Usa python keytool.py --help para ver los comandos disponibles.", file=sys.stderr)
         sys.exit(2)
+=======
+    if not password:
+        print("Error: la contraseña no puede estar vacía.")
+        return None
+    elif len(password) < 6:
+        print("Error: la contraseña debe tener al menos 6 caracteres.")
+        return None
+
+    if confirm:
+        if getpass("Repite la contraseña: ") != password:
+            print("Error: las contraseñas no coinciden.")
+            return None
+
+    return password
+>>>>>>> 547f01f074ed7e5843c886c0e125745c68bb5786
 
 
 def build_parser():
