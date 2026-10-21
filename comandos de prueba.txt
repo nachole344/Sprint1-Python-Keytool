@@ -20,3 +20,5 @@ python keytool.py -showinfo
 python keytool.py -version 
 python keytool.py --gencert -infile sean.csr
 python keytool.py -gencert -infile data/num.csr -outfile data/num.crt
+python keytool.py -exportcert
+python keytool.py -genkeypair -keyalg RSA -alias nuestroAlias -keystore nuestroFichero.jks -keysize 2048
