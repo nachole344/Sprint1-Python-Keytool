@@ -1,3 +1,4 @@
+```python
 # programa principal: simulacion de Java Keytool en Python
 # lee los argumentos de la terminal (argparse), muestra la ayuda y llama al comando elegido
 # los comandos se pueden escribir como en keytool (-genkeypair) o con doble guion (--genkeypair)
@@ -5,6 +6,7 @@
 import argparse
 import sys
 
+# importar el modulo que contiene las funciones de cada comando
 import commands
 
 
@@ -12,7 +14,9 @@ import commands
 # ================ AYUDA ===================
 # ==========================================
 
-# descripcion de cada opcion (se reutiliza en la ayuda de cada comando)
+# diccionario con las opciones que puede utilizar cada comando
+# cada opcion tiene un nombre para el valor que recibe y una descripcion
+# se reutiliza para mostrar la ayuda general de cada comando
 OPTION_HELP = {
     "-alias": ("ALIAS", "nombre que identifica la entrada en el KeyStore"),
     "-keystore": ("ARCHIVO", "KeyStore a usar (por defecto data/keystore.enc)"),
@@ -37,7 +41,9 @@ OPTION_HELP = {
     "-srcalias": ("ALIAS", "importar solo este alias (si se omite, todos)"),
 }
 
-# comandos: grupo, descripcion corta, descripcion larga, opciones, ejemplo
+
+# diccionario que define los comandos disponibles en el simulador
+# cada comando tiene su grupo, descripcion, opciones admitidas y ejemplo de uso
 COMMANDS = {
     "genkeypair": {
         "group": "Claves y KeyStore",
@@ -165,7 +171,9 @@ COMMANDS = {
     },
 }
 
-# funcion que ejecuta cada comando
+
+# relacionar cada nombre de comando con la funcion que lo ejecuta
+# asi main puede encontrar la funcion correcta sin usar muchos if y elif
 HANDLERS = {
     "genkeypair": commands.genkeypair,
     "genseckey": commands.genseckey,
@@ -188,49 +196,61 @@ HANDLERS = {
 
 
 def print_general_help():
+    # mostrar el nombre y la forma general de utilizar el programa
     print("mykeytool: simulador de Java Keytool en Python")
     print()
     print("Uso: python keytool.py -COMANDO [opciones]      (también vale --COMANDO)")
     print("     python keytool.py -COMANDO -help           ayuda de un comando")
     print()
 
+    # obtener los grupos de comandos sin repetirlos
     groups = []
     for spec in COMMANDS.values():
         if spec["group"] not in groups:
             groups.append(spec["group"])
 
+    # recorrer los grupos y mostrar los comandos que pertenecen a cada uno
     for group in groups:
         print(f"{group}:")
         for name, spec in COMMANDS.items():
             if spec["group"] == group:
+                # alinear los nombres para que la ayuda sea mas facil de leer
                 print(f"  -{name:<16}{spec['short']}")
         print()
 
+    # explicar las formas disponibles de pedir ayuda
     print("Ayuda: -h, -?, -help o --help")
     print()
     print("Si no se indican contraseñas, alias o datos del titular, el programa los pide por teclado.")
     print("Los archivos sin carpeta (CSR, certificados) se guardan y buscan en la carpeta data/.")
     print()
+
+    # avisar de un comando de Java Keytool que no se ha implementado
     print("No implementado: -importpass (guardar contraseñas como entradas no se ha incluido en este simulador).")
     print("Diferencias con Java Keytool: ver README.md (apartado Limitaciones).")
 
 
 def print_command_help(name):
+    # recuperar la informacion del comando solicitado
     spec = COMMANDS[name]
 
+    # mostrar su descripcion y la forma de utilizarlo
     print(f"-{name}: {spec['short']}")
     print()
     print(spec["long"])
     print()
     print(f"Uso: python keytool.py -{name} [opciones]")
 
+    # mostrar las opciones que admite este comando
     if spec["options"]:
         print()
         print("Opciones:")
         for option in spec["options"]:
+            # obtener el nombre del valor y la explicacion de la opcion
             metavar, text = OPTION_HELP[option]
             print(f"  {(option + ' ' + metavar).strip():<26}{text}")
 
+    # mostrar un ejemplo de uso
     print()
     print("Ejemplo:")
     print(f"  {spec['example']}")
@@ -243,73 +263,110 @@ def print_command_help(name):
 class SpanishParser(argparse.ArgumentParser):
     # argparse muestra los errores en ingles; aqui se muestran en español y sin traza
     def error(self, message):
+        # imprimir un mensaje de error en la salida de errores
         print(f"Error: argumentos no validos ({message}).", file=sys.stderr)
+
+        # indicar donde consultar los comandos disponibles
         print("Usa python keytool.py --help para ver los comandos disponibles.", file=sys.stderr)
+
+        # terminar con codigo 2, que indica un error en los argumentos
         sys.exit(2)
 
 
 def build_parser():
+    # crear el analizador de argumentos
+    # add_help=False permite controlar la ayuda manualmente
+    # allow_abbrev=False evita aceptar opciones incompletas por accidente
     parser = SpanishParser(add_help=False, allow_abbrev=False)
 
-    # ayuda
+    # registrar las formas de pedir ayuda
     parser.add_argument("-h", "-?", "-help", "--help", dest="help", action="store_true")
 
-    # comandos: solo se puede elegir uno
+    # crear un grupo que impide seleccionar varios comandos a la vez
     group = parser.add_mutually_exclusive_group()
+
+    # registrar los comandos definidos en COMMANDS
     for name in COMMANDS:
         names = [f"-{name}", f"--{name}"]
+
+        # permitir tambien -genkey como alias de -genkeypair
         if name == "genkeypair":
             names += ["-genkey", "--genkey"]
+
+        # guardar el nombre interno del comando elegido
         group.add_argument(*names, dest="command", action="store_const", const=name)
 
-    # opciones con valor
+    # registrar las opciones que reciben un valor de texto
     for name in ("alias", "keystore", "file", "infile", "outfile", "keyalg", "dname",
                  "storepass", "keypass", "new", "destalias", "srckeystore", "destkeystore",
                  "srcstorepass", "deststorepass", "srcalias"):
         parser.add_argument(f"-{name}", f"--{name}", dest=name)
 
+    # registrar las opciones que deben recibir un numero entero
     for name in ("keysize", "validity"):
         parser.add_argument(f"-{name}", f"--{name}", dest=name, type=int)
 
-    # opciones sin valor
+    # registrar las opciones que funcionan como interruptores
+    # si aparecen en la terminal, su valor pasa a ser True
     for name in ("rfc", "noprompt"):
         parser.add_argument(f"-{name}", f"--{name}", dest=name, action="store_true")
+
+    # opcion corta para mostrar informacion detallada
     parser.add_argument("-v", dest="v", action="store_true")
 
-    # argumento suelto: archivo (p. ej. python keytool.py -printcertreq prueba.csr)
+    # permitir un argumento de archivo sin nombre de opcion
+    # nargs="?" hace que sea opcional y que solo se acepte uno
     parser.add_argument("archivo", nargs="?")
 
+    # devolver el parser preparado
     return parser
 
 
 def main(argv=None):
+    # utilizar los argumentos recibidos o, si no se han pasado,
+    # los argumentos escritos por el usuario en la terminal
     argv = sys.argv[1:] if argv is None else argv
 
-    # -importpass existe en Java Keytool pero no esta implementado aqui
+    # importpass existe en Java Keytool pero no esta implementado aqui
+    # comprobarlo antes de analizar el resto de argumentos
     if "-importpass" in argv or "--importpass" in argv:
         print("Error: -importpass no está implementado en este simulador.")
         return 1
 
+    # analizar los argumentos y guardarlos en el objeto args
     args = build_parser().parse_args(argv)
 
-    # la ayuda se resuelve ANTES de ejecutar nada: -genkeypair --help no genera ninguna clave
+    # resolver la ayuda antes de ejecutar el comando
+    # por ejemplo, -genkeypair --help muestra la ayuda sin generar claves
     if args.help:
         if args.command:
+            # si se ha indicado un comando, mostrar solo su ayuda
             print_command_help(args.command)
         else:
+            # si no se ha indicado, mostrar la ayuda general
             print_general_help()
         return 0
 
+    # si no se ha elegido ningun comando, mostrar la ayuda general
     if not args.command:
         print_general_help()
+
+        # devolver 0 si no se han escrito argumentos y 1 si faltaba un comando
         return 0 if not argv else 1
 
     try:
+        # buscar la funcion asociada al comando y ejecutarla con sus argumentos
         return HANDLERS[args.command](args)
+
     except (KeyboardInterrupt, EOFError):
+        # controlar la cancelacion con Ctrl+C o el fin inesperado de la entrada
         print("\nOperación cancelada.")
         return 1
 
 
+# ejecutar main solo cuando este archivo se inicia directamente
+# evita que se ejecute automaticamente al importarlo desde otro modulo
 if __name__ == "__main__":
+    # terminar el programa usando el codigo de salida devuelto por main
     sys.exit(main())
+```
