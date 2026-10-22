@@ -15,6 +15,7 @@ python keytool.py -keypasswd
 python keytool.py -list
 python keytool.py -printcert -file num.crt 
 python keytool.py -printcertreq -file num.csr
+python keytool.py -printclt
 python keytool.py -storepasswd
 python keytool.py -showinfo  
 python keytool.py -version 
