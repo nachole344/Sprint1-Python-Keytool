@@ -302,8 +302,13 @@ def build_parser():
         if name == "genkeypair":
             names += ["-genkey", "--genkey"]
 
+        # permitir tambien -export como alias de -exportcert
         elif name == "exportcert":
             names += ["-export", "--export"]
+
+        # permitir tambien -import como alias de -importcert
+        elif name == "importcert":
+            names += ["-import", "--import"]
 
         group.add_argument(*names, dest="command", action="store_const", const=name)
 
