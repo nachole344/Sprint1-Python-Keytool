@@ -1,0 +1,89 @@
+keytool.py -
+principal para ejecutar el simulador en terminal, recibe argumentos como -list, -genkeypais o -certrreq
+
+contiene:
+- OPTION_HELP : textos de ayuda para las opciones
+- COMMANDS : descripcion de los comandos con las funciones que los ejecutan
+(aunque se muestre un comando no significa que este implementada)
+- HANDLERS : relaciona los comandos con las funciones que los ejecutan
+- build_parser() : configura los argumentos que acepta la terminal
+- print_general_help() y print_command_help() : muestran ayuda
+- main() : procesa los argumentos y ejecuta la accion 
+
+
+crypto_utils.py
+contiene las operaciones criptograficas de bajo nivel, para asi no tener que estar reescribinedo en cada comando
+sirve para:
+- trabajar con clases RSA
+- crear y procesar informacion de certificados
+- gestiona nombres de DN 
+- generar o emitir certificados segunlas funciones 
+
+keystore.py
+encargado de gestionar el KeyStore donde se guardan las entradas 
+funciones:
+- create_keystore() : prepara la carpeta del almacen
+- save_keystore() y load_keystore() : guarda y carga el almacen
+- derive_key() : deriva una clave a aprtir de la contraseña
+- add_entry() y replace_entry() : añaden o sustituyen entradas
+- delete_entry() y rename_entry() : eliminan o cambian el alais
+- list_aliases() : deveulve los alais guardados
+- get_key() y save_key() : trabajan con las claves de una entrada
+- change_sotre_password() : cambia la contraseña del alamacen
+
+
+csr.py
+encargado de generar solicitudes de firma de certificado(CSR). 
+el csr contiene ifo del solicitante y su clave publica
+se utiliza para: 
+1. obtener la clave corresponeidne con el alais
+2. prepara los datos del sujeto
+3. genera la solicitudes4. guarda el archivo pepe.csr
+
+verify_csr.py
+comprueba que un archivo csr existe, pueda leerse y la firma sea valida
+tambnien muestra info como sujero algoritmo de firma tipo y tamaño de clave publica
+
+commands.py
+contiene las operaciones que ejecuta los comandos del keytool
+es lacapa intermedia entre argumentos que pide el usuario y funciones de criptografia o almacenamiento
+
+
+certificate.py
+participa en las operaciones relacionadas con certificadas
+interviene en su carga, emision esportacion o visualizar
+
+
+.csr - solicitudes de firma de certifiacdo+
+.csrt - certificados emitidos o guardados
+.enc - almacen cifradi
+
+
+commandos principales:
+--help 
+-genkeypair
+-certreq 
+-printcertreq
+-list
+verify_csr.py data/*.csr
+
+otros comandos importantes:
+
+-certreq	genera una CSR
+-changealais cambiar alias de una entrada
+-delete elimina una entrada
+-exportcert exporta un certificado (lo mismo que -export)
+-genkeypair genera clave publica y privada
+-genseckey genera clave secreta
+-gencert emite un certificado apartir de una solicitud
+-importcert importa un certificado
+-importpass importa una contraseña
+-importkeystore importa entradas de otro almacen
+-keypasswd cambia la contraseña de una clave
+-lista de las entradas del almacen
+-printcert muestera info de un certificado
+-printcertreq muestra info de una csr
+-printcrl muestra una lista de revocacion de certificados
+-storepasswd cambia la contrasña del almacen+
+-showinfo muestra info del entrono o almacen
+-version la version del simulador
