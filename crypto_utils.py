@@ -63,22 +63,20 @@ def private_key_to_pem(private_key, key_password):
 # ========================================
 
 def create_subject(cn, ou, o, l, st, c):
-    # crear el distinguished name (dn) del titular
-    # el dn contiene los datos que identifican a la persona o entidad
+    subject = []
 
-    # guardar los datos del titular utilizando sus identificadores
-    # cada campo representa una parte diferente de su informacion
-    subject = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, c),  # pais
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, st),  # provincia o estado
-        x509.NameAttribute(NameOID.LOCALITY_NAME, l),  # localidad
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, o),  # organizacion
-        x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, ou),  # unidad organizativa
-        x509.NameAttribute(NameOID.COMMON_NAME, cn),  # nombre comun del titular
+    if c != "Unknown":
+        subject.append(x509.NameAttribute(NameOID.COUNTRY_NAME, c))
+
+    subject.extend([
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, st),
+        x509.NameAttribute(NameOID.LOCALITY_NAME, l),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, o),
+        x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, ou),
+        x509.NameAttribute(NameOID.COMMON_NAME, cn)
     ])
 
-    # devolver el dn creado para utilizarlo en la solicitud csr
-    return subject
+    return x509.Name(subject)
 
 
 def parse_dname(text):

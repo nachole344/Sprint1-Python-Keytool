@@ -4,6 +4,7 @@
 # y devuelve 0 si todo ha ido bien o 1 si ha habido un error controlado
 
 import base64
+from dataclasses import fields
 import datetime
 import os
 import secrets
@@ -47,6 +48,7 @@ def opt(opts, name):
 
 
 def fail(message):
+    # Muestra un mensaje de error
     print(f"Error: {message}")
     return 1
 
@@ -121,21 +123,23 @@ def ask_alias(given=None, label="Alias"):
 def ask_subject_data():
     print("\n=== Datos del titular ===")
 
+    # Se pregunan cada uno de los datos (entre corchetes se avisa cúal es la opción por defecto)
     fields = {
-        "CN": input("CN (Common Name): ").strip(),
-        "OU": input("OU (Organizational Unit): ").strip(),
-        "O": input("O (Organization): ").strip(),
-        "L": input("L (Locality): ").strip(),
-        "ST": input("ST (State/Province): ").strip(),
-        "C": input("C (Country): ").strip().upper(),
+        "CN": input("CN (Common Name)\n [Unknown]: ").strip(),
+        "OU": input("OU (Organizational Unit)\n [Unknown]: ").strip(),
+        "O": input("O (Organization)\n [Unknown]: ").strip(),
+        "L": input("L (Locality)\n [Unknown]: ").strip(),
+        "ST": input("ST (State/Province)\n [Unknown]: ").strip(),
+        "C": input("C (Country)\n [Unknown]: ").strip().upper(),
     }
 
+    # Si un campo se deja vacio, se le pondra "Unknown" por defecto (a excepcion del campo Country)
     for name, value in fields.items():
         if not value:
-            print(f"Error: el campo {name} no puede estar vacío.")
-            return None
+            fields[name] = "Unknown"
 
-    if len(fields["C"]) != 2:
+    # Si el campo Country [C] existe, comprueba que tenga 2 caracteres exactos
+    if fields["C"] != "Unknown" and len(fields["C"]) != 2:
         print("Error: el campo C debe tener exactamente 2 caracteres.")
         return None
 
@@ -244,6 +248,22 @@ def genkeypair(opts=None):
             c=subject_data["C"]
         )
 
+    # DN en formato RFC4514 para mostrarlo al usuario y pedir confirmacion
+    text_subject = subject.rfc4514_string()
+    if subject_data["C"] == "Unknown":
+        text_subject += ",C=Unknown"
+
+    # Se pide confirmación de los datos antes de hacer un guardao definitivo
+    print(f"¿Es {text_subject} correcto? [y/n]")
+    op = input("[no]: ").lower() # Entre corchetes se avisa cúal es la opción por defecto
+    if op == "n":
+        print("Par de claves no generado.")
+        return 1
+    elif not (op == "y" or op == "s"):
+        fail("opción no válida introducida.")
+        print("Par de claves no generado.")
+        return 1
+    
     private_key = generate_rsa_key(key_size)
 
     # como keytool, se crea tambien un certificado AUTOFIRMADO (nadie lo ha validado)
@@ -368,7 +388,7 @@ def printcertreq(opts=None):
 
 
 # ==========================================
-# ============== EXPORTCERT ================
+# ========== EXPORTCERT / EXPORT ===========
 # ==========================================
 
 @safe
@@ -534,7 +554,7 @@ def keypasswd(opts=None):
 
 
 # ==========================================
-# ============== IMPORTCERT ================
+# ========= IMPORTCERT / IMPORT ============
 # ==========================================
 
 def issuer_in_store(certificate, data, skip_alias):

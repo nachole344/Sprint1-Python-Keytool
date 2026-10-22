@@ -5,6 +5,7 @@ import sys
 
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import NameOID
 
 
 def verify_csr(filepath):
@@ -43,6 +44,8 @@ def show_csr_info(csr):
     print("          INFORMACION CSR")
     print("===================================")
     print("Subject:", csr.subject.rfc4514_string())
+    country = csr.subject.get_attributes_for_oid(NameOID.COUNTRY_NAME)
+    print("Country:", country[0].value if country else "Unknown")
     hash_algorithm = csr.signature_hash_algorithm
     print("Algoritmo:", hash_algorithm.name if hash_algorithm else "desconocido")
     print("Firma valida:", csr.is_signature_valid)
