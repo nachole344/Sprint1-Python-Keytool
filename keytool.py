@@ -203,12 +203,23 @@ def print_general_help():
         print(f"{group}:")
         for name, spec in COMMANDS.items():
             if spec["group"] == group:
-                print(f"  -{name:<16}{spec['short']}")
+                text_name = name
+                
+                # Si es genkeypair, exportcert o importcert, mostramos visualmente el alias histórico
+                if name == "genkeypair":
+                    text_name = "genkeypair / -genkey"
+                elif name == "exportcert":
+                    text_name = "exportcert / -export"
+                elif name == "importcert":
+                    text_name = "importcert / -import"
+                    
+                print(f"  -{text_name:<25}{spec['short']}")
         print()
+
 
     print("Ayuda: -h, -?, -help o --help")
     print()
-    print("Si no se indican contraseñas, alias o datos del titular, el programa los pide por teclado.")
+    print("Si no se indican contraseñas, alias o datos del titular, el programa los asigna como \"Unknown\" automáticamente.")
     print("Los archivos sin carpeta (CSR, certificados) se guardan y buscan en la carpeta data/.")
     print()
     print("No implementado: -importpass (guardar contraseñas como entradas no se ha incluido en este simulador).")
@@ -260,6 +271,10 @@ def build_parser():
         names = [f"-{name}", f"--{name}"]
         if name == "genkeypair":
             names += ["-genkey", "--genkey"]
+
+        elif name == "exportcert":
+            names += ["-export", "--export"]
+
         group.add_argument(*names, dest="command", action="store_const", const=name)
 
     # opciones con valor
