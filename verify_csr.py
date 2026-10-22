@@ -1,4 +1,3 @@
-```python
 # funciones para verificar solicitudes csr y mostrar su informacion
 # tambien se puede usar desde la terminal: python verify_csr.py archivo.csr
 
@@ -116,4 +115,3 @@ def main(argv=None):
 if __name__ == "__main__":
     # finalizar el programa con el codigo devuelto por main
     sys.exit(main())
-```

@@ -1,4 +1,3 @@
-```python
 # programa principal: simulacion de Java Keytool en Python
 # lee los argumentos de la terminal (argparse), muestra la ayuda y llama al comando elegido
 # los comandos se pueden escribir como en keytool (-genkeypair) o con doble guion (--genkeypair)
@@ -369,4 +368,3 @@ def main(argv=None):
 if __name__ == "__main__":
     # terminar el programa usando el codigo de salida devuelto por main
     sys.exit(main())
-```

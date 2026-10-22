@@ -1,4 +1,3 @@
-```python
 # almacen de claves cifrado (simulacion de keystore)
 # el archivo data/keystore.enc contiene un diccionario {alias: entrada} cifrado con la contraseña del almacen
 
@@ -404,4 +403,3 @@ def get_key(alias, password, path=None):
 
     # devolver los datos de la entrada solicitada
     return data[alias]
-```
